@@ -28,7 +28,7 @@ def formato_numero(n):
 @st.cache_data
 def cargar_datos():
     # Ruta interna del archivo Parquet
-    ruta_parquet = r"C:\Users\genaro.aristizabal\Sapiencia\Administracion_BD_Fondos - Documentos\SCRIPTS_PY\PQRS_Convocatoria\Resultados_Linea_pregrado_2025-2.parquet"
+    ruta_parquet = "/app/Resultados_Linea_pregrado_2025-2.parquet"
    
     try:
         df = pd.read_parquet(ruta_parquet)
