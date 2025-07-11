@@ -16,6 +16,7 @@ COPY pqrs.py /app/
 COPY legalizacion_rechazada.docx /app/
 COPY No_preseleccionado_por_punto_corte_pp.docx /app/
 COPY No_cumple_habilitante_b.docx /app/
+COPY Resultados_Linea_pregrado_2025-2.parquet /app/
 
 # Instala las dependencias de Python
 RUN pip install --no-cache-dir \
