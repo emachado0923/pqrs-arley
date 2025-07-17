@@ -14,7 +14,7 @@ st.set_page_config(page_title="Generador PQRS Convocatorias", layout="wide")
 
 # Configuración de bases de datos (igual que en app.py)
 LOGIN_DB_CONFIG = {
-    'host': '34.59.133.119',
+    'host': '10.124.80.4',
     'user': 'root',
     'password': 'c0nv0c4t0r14s.S4p',
     'database': 'analitica_fondos',
@@ -22,7 +22,7 @@ LOGIN_DB_CONFIG = {
 }
 
 APP_DB_CONFIG = {
-    'host': '34.59.133.119',
+    'host': '10.124.80.4',
     'user': 'root',
     'password': 'c0nv0c4t0r14s.S4p',
     'database': 'convocatoria_sapiencia',
