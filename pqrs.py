@@ -14,7 +14,8 @@ st.set_page_config(page_title="Generador PQRS Convocatorias", layout="wide")
 
 # Configuración de bases de datos (igual que en app.py)
 LOGIN_DB_CONFIG = {
-    'host': '10.124.80.4',
+    'host': '10.124.80.4', #usa ésta IP para desplegar la aplicacion
+    #'host': '34.70.133.119', # usa esta ip cuando estés en una red autorizada
     'user': 'arley',
     'password': 'E*d)HppA}.PcaMtD',
     'database': 'analitica_fondos',
@@ -22,12 +23,14 @@ LOGIN_DB_CONFIG = {
 }
 
 APP_DB_CONFIG = {
-    'host': '10.124.80.4',
+    'host': '10.124.80.4',  #usa ésta IP para desplegar la aplicacion
+    #'host': '34.70.133.119', # usa esta ip cuando estés en una red autorizada
     'user': 'arley',
     'password': 'E*d)HppA}.PcaMtDp',
     'database': 'convocatoria_sapiencia',
     'port': 3306
 }
+
 
 # Conexión a la base de datos de login (igual que en app.py)
 @st.cache_resource
@@ -40,6 +43,7 @@ def init_login_connection():
         st.error(f"Error al conectar con la base de datos de autenticación: {e}")
         return None
 
+
 # Conexión a la base de datos de aplicación (igual que en app.py)
 @st.cache_resource
 def init_app_connection():
@@ -50,6 +54,7 @@ def init_app_connection():
     except Exception as e:
         st.error(f"Error al conectar con la base de datos de aplicación: {e}")
         return None
+
 
 # Funciones de seguridad mejoradas (igual que en app.py)
 def crear_hash_con_sal(password: str) -> tuple:
@@ -66,6 +71,7 @@ def crear_hash_con_sal(password: str) -> tuple:
     except Exception as e:
         st.error(f"Error al crear hash: {str(e)}")
         return None, None
+
 
 def verificar_password(sal: str, hash_almacenado: str, password_proporcionado: str) -> bool:
     """Verifica si el password proporcionado coincide con el hash almacenado"""
@@ -84,6 +90,7 @@ def verificar_password(sal: str, hash_almacenado: str, password_proporcionado: s
     except Exception as e:
         st.error(f"Error al verificar contraseña: {str(e)}")
         return False
+
 
 # Función de autenticación (igual que en app.py)
 def autenticar_usuario(username: str, password: str) -> bool:
@@ -129,6 +136,7 @@ def autenticar_usuario(username: str, password: str) -> bool:
         st.error(f"Error de autenticación: {str(e)}")
         return False
 
+
 # Funciones de gestión de usuarios (igual que en app.py)
 def obtener_info_usuario(username: str):
     """Obtiene información del usuario"""
@@ -144,6 +152,7 @@ def obtener_info_usuario(username: str):
     except Exception as e:
         st.error(f"Error al obtener información del usuario: {e}")
         return None
+
 
 def cambiar_password(username: str, password_actual: str, nuevo_password: str) -> bool:
     """Cambia la contraseña de un usuario"""
@@ -194,6 +203,7 @@ def cambiar_password(username: str, password_actual: str, nuevo_password: str) -
         st.error(f"Error al cambiar contraseña: {e}")
         return False
 
+
 def crear_usuario(username: str, password: str, nombre_completo: str) -> bool:
     """Crea un nuevo usuario en el sistema"""
     engine = init_login_connection()
@@ -237,6 +247,7 @@ def crear_usuario(username: str, password: str, nombre_completo: str) -> bool:
         st.error(f"Error al crear usuario: {e}")
         return False
 
+
 # Función para convertir número a texto
 def formato_numero(n):
     try:
@@ -248,10 +259,10 @@ def formato_numero(n):
     except (TypeError, ValueError):
         return n
 
+
 # Cargar base de datos interna (el archivo parquet)
 @st.cache_data
-def cargar_datos():
-    ruta_parquet = "/app/Resultados_Linea_pregrado_2025-2.parquet"
+def cargar_datos(ruta_parquet):
     try:
         df = pd.read_parquet(ruta_parquet)
         df.fillna(0, inplace=True)
@@ -262,8 +273,25 @@ def cargar_datos():
         st.error(f"Error al cargar la base de datos: {str(e)}")
         return None
 
+
+# Plantillas por pestaña
+PLANTILLAS = {
+    "tab1": {
+        "LEGALIZACIÓN RECHAZADA": "legalizacion_rechazada.docx",
+        "LEGALIZACIÓN RECHAZADA POR CAMBIO DE COMUNA": "legalizacion_rechazada_cambio_comuna.docx",
+        "NO PRESELECCIONADO POR PUNTO DE CORTE PP": "No_preseleccionado_por_punto_corte_pp.docx",
+        "NO CUMPLE HABILITANTE ART.70 LITERAL B": "No_cumple_habilitante_b.docx",
+        "IMPEDIDO ART. 71 LITERAL A": "Impedido_literal_a.docx",
+    },
+    "tab2": {
+        "NO CUMPLE HABILITANTE ART. 40 LITERAL F DEC. 0344 DE 2025": "No_cumple_habilitante_f_efe.docx",
+        "NO CUMPLE HABILITANTE ART. 40 LITERAL G DEC. 0344 DE 2025": "No_cumple_habilitante_g_efe.docx"
+    }
+}
+
+
 # Generar documento según plantilla y tipo
-def generar_documento(tipo_documento, row, radicado, imagen1=None, imagen2=None):
+def generar_documento(tipo_documento, row, radicado, pestaña, imagen1=None, imagen2=None):
     context = row.to_dict()
     context['radicado'] = radicado  # Agregamos el radicado ingresado
 
@@ -271,12 +299,7 @@ def generar_documento(tipo_documento, row, radicado, imagen1=None, imagen2=None)
         if key.startswith('cal'):
             context[key] = formato_numero(context[key])
 
-    template_path = {
-        "LEGALIZACIÓN RECHAZADA": "legalizacion_rechazada.docx",
-        "NO PRESELECCIONADO POR PUNTO DE CORTE PP": "No_preseleccionado_por_punto_corte_pp.docx",
-        "NO CUMPLE HABILITANTE ART.70 LITERAL B": "No_cumple_habilitante_b.docx",
-    }[tipo_documento]
-
+    template_path = PLANTILLAS[pestaña][tipo_documento]
     doc = DocxTemplate(template_path)
 
     # Insertar imágenes redimensionadas según plantilla
@@ -297,10 +320,11 @@ def generar_documento(tipo_documento, row, radicado, imagen1=None, imagen2=None)
     buffer.seek(0)
     return buffer
 
+
 # Componentes de la UI
 def mostrar_formulario_login():
     """Muestra el formulario de login"""
-    st.title("📄 Generador de PQRS para Convocatorias de Línea Pregrado")
+    st.title("📄 Generador de PQRS para Convocatorias")
     st.subheader("Sapiencia - Medellín")
     with st.form("login_form"):
         st.markdown("## 🔐 Inicio de Sesión")
@@ -322,6 +346,7 @@ def mostrar_formulario_login():
             else:
                 st.error("Usuario o contraseña incorrectos.")
 
+
 def mostrar_formulario_cambio_password():
     """Muestra el formulario para cambiar contraseña"""
     with st.form("cambio_password_form"):
@@ -342,6 +367,7 @@ def mostrar_formulario_cambio_password():
                 st.error("La nueva contraseña debe tener al menos 8 caracteres.")
             else:
                 cambiar_password(st.session_state.username, password_actual, nueva_password)
+
 
 def mostrar_formulario_registro():
     """Muestra el formulario de registro de nuevos usuarios"""
@@ -369,9 +395,10 @@ def mostrar_formulario_registro():
     else:
         st.warning("🚨 Solo el usuario 'admin' puede registrar nuevos usuarios.")
 
+
 def mostrar_interfaz_principal_pqrs():
     """Muestra la interfaz principal de PQRS después del login"""
-    st.title("📄 Generador de PQRS para Convocatorias de Línea Pregrado")
+    st.title("📄 Generador de PQRS para Convocatorias")
     st.subheader(f"Sapiencia - Medellín | Usuario: {st.session_state.username}")
 
     # Menú de opciones
@@ -386,72 +413,139 @@ def mostrar_interfaz_principal_pqrs():
     )
 
     if opcion == "Generar PQRS":
-        # Cargar datos
-        df = cargar_datos()
+        # Configuración de pestañas
+        tab1, tab2, tab3 = st.tabs([
+            "📄 Línea Pregrado",
+            "📄 Posgrado - Extendiendo Fronteras",
+            "📄 Posgrados maestros - Formación Avanzada"
+        ])
 
-        if df is not None:
-            st.success(f"Base de datos cargada con {len(df)} registros.")
+        with tab1:
+            st.header("Línea Pregrado")
+            ruta_parquet = "/app/Resultados_Linea_pregrado_2025-2.parquet"
+            df = cargar_datos(ruta_parquet)
 
-            doc_busqueda = st.text_input("🔎 Ingrese el número de documento del aspirante:")
-            resultado = df[df['Documento'] == doc_busqueda] if doc_busqueda else pd.DataFrame()
+            if df is not None:
+                st.success(f"Base de datos cargada con {len(df)} registros.")
+                doc_busqueda = st.text_input("🔎 Ingrese el número de documento del aspirante:", key="doc_pregrado")
+                resultado = df[df['Documento'] == doc_busqueda] if doc_busqueda else pd.DataFrame()
 
-            if not resultado.empty:
-                row = resultado.iloc[0]
-                st.success(f"Aspirante encontrado: {row['Nombre']}")
+                if not resultado.empty:
+                    row = resultado.iloc[0]
+                    st.success(f"Aspirante encontrado: {row['Nombre']}")
 
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.info(f"**Documento:** {row['Documento']}")
-                with col2:
-                    st.info(f"**Comuna:** {row['Comuna']}")
-                with col2:
-                    st.info(f"**Estrato:** {row['Estrato']}")
-                with col3:
-                    st.info(f"**Puntaje total:** {row['cal_total']}")
-                with col3:
-                    st.info(f"**Punto de corte PP:** {row['punto_corte_pp']}")
-                with col3:
-                    st.info(f"**Resultado PP:** {row['Observaciones Presupuesto Participativo']}")
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.info(f"**Documento:** {row['Documento']}")
+                    with col2:
+                        st.info(f"**Comuna:** {row['Comuna']}")
+                        st.info(f"**Estrato:** {row['Estrato']}")
+                    with col3:
+                        st.info(f"**Puntaje total:** {row['cal_total']}")
+                        st.info(f"**Punto de corte PP:** {row['punto_corte_pp']}")
+                        st.info(f"**Resultado PP:** {row['Observaciones Presupuesto Participativo']}")
 
-                # Campo radicado (antes de seleccionar plantilla)
-                radicado = st.text_input("✍️ Ingrese el número de radicado:", max_chars=30)
+                    # Campo radicado (antes de seleccionar plantilla)
+                    radicado = st.text_input("✍️ Ingrese el número de radicado:", max_chars=30, key="rad_pregrado")
 
-                # Selección de tipo de documento
-                tipo_documento = st.selectbox(
-                    "📄 Seleccione el tipo de documento a generar:",
-                    ["LEGALIZACIÓN RECHAZADA", "NO PRESELECCIONADO POR PUNTO DE CORTE PP", "NO CUMPLE HABILITANTE ART.70 LITERAL B"]
-                )
+                    # Selección de tipo de documento
+                    tipo_documento = st.selectbox(
+                        "📄 Seleccione el tipo de documento a generar:",
+                        list(PLANTILLAS["tab1"].keys()),
+                        key="tipo_doc_pregrado"
+                    )
 
-                # Subida de imágenes
-                if tipo_documento == "NO PRESELECCIONADO POR PUNTO DE CORTE PP":
-                    st.markdown("📷 Suba las dos imágenes requeridas para el documento:")
-                    imagen1 = st.file_uploader("Imagen 1 (para {{imagen_1}})", type=["jpg", "jpeg", "png"], key="img1")
-                    imagen2 = st.file_uploader("Imagen 2 (para {{imagen_2}})", type=["jpg", "jpeg", "png"], key="img2")
-                else:
-                    st.markdown("📷 Suba la imagen requerida para el documento:")
-                    imagen1 = st.file_uploader("Imagen 1 (para {{imagen_1}})", type=["jpg", "jpeg", "png"], key="img1")
-                    imagen2 = None
-
-                # Botón para generar
-                if st.button("✅ Generar Documento"):
-                    if not radicado.strip():
-                        st.warning("Debe ingresar el número de radicado.")
-                    elif tipo_documento == "NO PRESELECCIONADO POR PUNTO DE CORTE PP" and (imagen1 is None or imagen2 is None):
-                        st.warning("Debe subir ambas imágenes.")
-                    elif tipo_documento != "NO PRESELECCIONADO POR PUNTO DE CORTE PP" and imagen1 is None:
-                        st.warning("Debe subir una imagen.")
+                    # Subida de imágenes
+                    if tipo_documento == "NO PRESELECCIONADO POR PUNTO DE CORTE PP":
+                        st.markdown("📷 Suba las dos imágenes requeridas para el documento:")
+                        imagen1 = st.file_uploader("Imagen 1 (para {{imagen_1}})", type=["jpg", "jpeg", "png"],
+                                                   key="img1_pregrado")
+                        imagen2 = st.file_uploader("Imagen 2 (para {{imagen_2}})", type=["jpg", "jpeg", "png"],
+                                                   key="img2_pregrado")
                     else:
-                        buffer = generar_documento(tipo_documento, row, radicado, imagen1, imagen2)
-                        nombre_doc = f"{tipo_documento.replace(' ', '_')}_{row['Documento']}_{row['Nombre'][:20]}.docx"
+                        st.markdown("📷 Suba la imagen requerida para el documento:")
+                        imagen1 = st.file_uploader("Imagen 1 (para {{imagen_1}})", type=["jpg", "jpeg", "png"],
+                                                   key="img1_pregrado")
+                        imagen2 = None
 
-                        st.download_button(
-                            label="📥 Descargar Documento",
-                            data=buffer,
-                            file_name=nombre_doc,
-                            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                        )
-            elif doc_busqueda:
-                st.warning("No se encontró ningún aspirante con ese documento.")
+                    # Botón para generar
+                    if st.button("✅ Generar Documento", key="btn_pregrado"):
+                        if not radicado.strip():
+                            st.warning("Debe ingresar el número de radicado.")
+                        elif tipo_documento == "NO PRESELECCIONADO POR PUNTO DE CORTE PP" and (
+                                imagen1 is None or imagen2 is None):
+                            st.warning("Debe subir ambas imágenes.")
+                        elif tipo_documento != "NO PRESELECCIONADO POR PUNTO DE CORTE PP" and imagen1 is None:
+                            st.warning("Debe subir una imagen.")
+                        else:
+                            buffer = generar_documento(tipo_documento, row, radicado, "tab1", imagen1, imagen2)
+                            nombre_doc = f"{tipo_documento.replace(' ', '_')}_{row['Documento']}_{row['Nombre'][:20]}.docx"
+
+                            st.download_button(
+                                label="📥 Descargar Documento",
+                                data=buffer,
+                                file_name=nombre_doc,
+                                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                            )
+                elif doc_busqueda:
+                    st.warning("No se encontró ningún aspirante con ese documento.")
+
+        with tab2:
+            st.header("Posgrado - Extendiendo Fronteras")
+            ruta_parquet = "/app/Resultados_EFE_2025-2.parquet"
+            df = cargar_datos(ruta_parquet)
+
+            if df is not None:
+                st.success(f"Base de datos cargada con {len(df)} registros.")
+                doc_busqueda = st.text_input("🔎 Ingrese el número de documento del aspirante:", key="doc_posgrado")
+                resultado = df[df['Documento'] == doc_busqueda] if doc_busqueda else pd.DataFrame()
+
+                if not resultado.empty:
+                    row = resultado.iloc[0]
+                    st.success(f"Aspirante encontrado: {row['Nombre']}")
+
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.info(f"**Documento:** {row['Documento']}")
+                    with col2:
+                        st.info(f"**Comuna:** {row['Comuna']}")
+                        st.info(f"**Estrato:** {row['Estrato']}")
+                    with col3:
+                        st.info(f"**Puntaje total:** {row['cal_total']}")
+                        st.info(f"**Punto de corte PP:** {row['punto_corte_pp']}")
+                        st.info(f"**Resultado PP:** {row['Observaciones Presupuesto Participativo']}")
+
+                    # Campo radicado
+                    radicado = st.text_input("✍️ Ingrese el número de radicado:", max_chars=30, key="rad_posgrado")
+
+                    # Selección de tipo de documento
+                    tipo_documento = st.selectbox(
+                        "📄 Seleccione el tipo de documento a generar:",
+                        list(PLANTILLAS["tab2"].keys()),
+                        key="tipo_doc_posgrado"
+                    )
+
+                    # Botón para generar
+                    if st.button("✅ Generar Documento", key="btn_posgrado"):
+                        if not radicado.strip():
+                            st.warning("Debe ingresar el número de radicado.")
+                        else:
+                            buffer = generar_documento(tipo_documento, row, radicado, "tab2")
+                            nombre_doc = f"{tipo_documento.replace(' ', '_')}_{row['Documento']}_{row['Nombre'][:20]}.docx"
+
+                            st.download_button(
+                                label="📥 Descargar Documento",
+                                data=buffer,
+                                file_name=nombre_doc,
+                                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                            )
+                elif doc_busqueda:
+                    st.warning("No se encontró ningún aspirante con ese documento.")
+
+        with tab3:
+            st.header("Posgrados maestros - Formación Avanzada")
+            st.info("Módulo en desarrollo - Próximamente disponible")
+
     elif opcion == "Cambiar contraseña":
         mostrar_formulario_cambio_password()
     elif opcion == "Registrar usuario":
@@ -462,6 +556,7 @@ def mostrar_interfaz_principal_pqrs():
             del st.session_state.username
             del st.session_state.user_info
             st.rerun()
+
 
 # Punto de entrada de la aplicación
 if __name__ == "__main__":
