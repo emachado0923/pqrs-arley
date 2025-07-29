@@ -326,10 +326,6 @@ def mostrar_formulario_login():
     """Muestra el formulario de login"""
     st.title("📄 Generador de PQRS para Convocatorias")
     st.subheader("Sapiencia - Medellín")
-
-    if not st.session_state.get("intento_login"):
-        st.session_state.intento_login = False
-
     with st.form("login_form"):
         st.markdown("## 🔐 Inicio de Sesión")
         username = st.text_input("Usuario", key="login_username")
@@ -342,19 +338,13 @@ def mostrar_formulario_login():
                 return
 
             if autenticar_usuario(username, password):
-                info_usuario = obtener_info_usuario(username)
-                if info_usuario:
-                    st.session_state.autenticado = True
-                    st.session_state.username = username
-                    st.session_state.user_info = info_usuario
-                    st.session_state.intento_login = True  # Indica que se logró
+                st.session_state.autenticado = True
+                st.session_state.username = username
+                st.session_state.user_info = obtener_info_usuario(username)
+                st.success("¡Inicio de sesión exitoso!")
+                st.rerun()
             else:
                 st.error("Usuario o contraseña incorrectos.")
-                st.session_state.intento_login = False
-
-    if st.session_state.autenticado and st.session_state.intento_login:
-        mostrar_interfaz_principal_pqrs()
-
 
 
 def mostrar_formulario_cambio_password():
@@ -570,15 +560,12 @@ def mostrar_interfaz_principal_pqrs():
 
 # Punto de entrada de la aplicación
 if __name__ == "__main__":
-    if "autenticado" not in st.session_state:
+    # Inicializar estado de sesión
+    if 'autenticado' not in st.session_state:
         st.session_state.autenticado = False
-    if "username" not in st.session_state:
-        st.session_state.username = ""
-    if "user_info" not in st.session_state:
-        st.session_state.user_info = {}
 
+    # Mostrar contenido según autenticación
     if st.session_state.autenticado:
         mostrar_interfaz_principal_pqrs()
     else:
         mostrar_formulario_login()
-
